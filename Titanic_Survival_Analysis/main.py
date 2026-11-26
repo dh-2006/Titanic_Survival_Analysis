@@ -1,18 +1,18 @@
 
-# Titanic Survival Analysis
-# Dataset: Kaggle - Titanic: Machine Learning from Disaster
-
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Read the Kaggle training dataset
-data = pd.read_csv("Titanic_Dataset.csv")
+# ==========================================
+# 1. LOAD DATASET
+# ==========================================
 
 print("\n========== TITANIC SURVIVAL ANALYSIS ==========")
 
-# Basic Information
+data = pd.read_csv("Titanic_Dataset.csv")
+
+print("\nDataset Loaded Successfully!")
 print("\nFirst 5 Records:")
 print(data.head())
 
@@ -22,146 +22,237 @@ print(data.shape)
 print("\nDataset Information:")
 data.info()
 
-print("\nMissing Values:")
+# ==========================================
+# 2. HANDLE MISSING VALUES
+# ==========================================
+
+print("\n========== DATA CLEANING ==========")
+
+print("\nMissing Values Before Handling:")
 print(data.isnull().sum())
 
-# Data Cleaning
-data["Age"] = data["Age"].fillna(data["Age"].median())
-data["Embarked"] = data["Embarked"].fillna(data["Embarked"].mode()[0])
+# Calculate missing percentage
+missing_percentage = data.isnull().mean() * 100
 
-print("\nMissing Values After Cleaning:")
-print(data[["Age", "Embarked"]].isnull().sum())
+# Drop columns having more than 50% missing values
+columns_to_drop = missing_percentage[
+    missing_percentage > 50
+].index.tolist()
 
-# NumPy - Numerical Analysis
-print("\n========== NUMPY ANALYSIS ==========")
+if columns_to_drop:
+    data.drop(columns=columns_to_drop, inplace=True)
+    print("\nDropped Columns:")
+    print(columns_to_drop)
 
-ages = np.array(data["Age"])
-fares = np.array(data["Fare"])
-survival = np.array(data["Survived"])
+# Handle numerical missing values using median
+numeric_columns = data.select_dtypes(
+    include=np.number
+).columns
 
-print("Average Age:", np.mean(ages))
-print("Median Age:", np.median(ages))
-print("Standard Deviation of Age:", np.std(ages))
+for col in numeric_columns:
+    if data[col].isnull().any():
+        median_value = data[col].median()
 
-print("Minimum Fare:", np.min(fares))
-print("Maximum Fare:", np.max(fares))
-print("Average Fare:", np.mean(fares))
+        if pd.notna(median_value):
+            data[col] = data[col].fillna(median_value)
+        else:
+            data.drop(columns=[col], inplace=True)
 
-print("25th Percentile of Fare:", np.percentile(fares, 25))
-print("75th Percentile of Fare:", np.percentile(fares, 75))
+# Handle categorical missing values using mode
+categorical_columns = data.select_dtypes(
+    include=["object", "category"]
+).columns
 
-# NumPy Array Operations
-survived_array = np.where(survival == 1, "Survived", "Not Survived")
+for col in categorical_columns:
+    if data[col].isnull().any():
+        mode_values = data[col].mode()
 
-print("\nFirst 10 Survival Results:")
-print(survived_array[:10])
+        if not mode_values.empty:
+            data[col] = data[col].fillna(mode_values[0])
+        else:
+            data.drop(columns=[col], inplace=True)
 
-print("\nTotal Survived:", np.sum(survival))
-print("Total Not Survived:", np.sum(survival == 0))
+print("\nMissing Values After Handling:")
+print(data.isnull().sum())
 
-# Basic Analysis
-total_passengers = len(data)
-survived = np.sum(survival)
-not_survived = total_passengers - survived
+print("\nMissing Values Handled Successfully!")
 
-survival_rate = np.mean(survival) * 100
+# ==========================================
+# 3. BASIC DATA ANALYSIS
+# ==========================================
 
-print("\n========== SUMMARY ==========")
-print("Total Passengers:", total_passengers)
-print("Survived Passengers:", survived)
-print("Not Survived Passengers:", not_survived)
-print("Overall Survival Rate: {:.2f}%".format(survival_rate))
+print("\n========== BASIC DATA ANALYSIS ==========")
+
+print("\nTotal Passengers:", len(data))
 
 print("\nSurvival Count:")
-print(data["Survived"].value_counts().rename(
-    index={0: "Not Survived", 1: "Survived"}
-))
+print(data["Survived"].value_counts())
+
+print("\nSurvival Percentage:")
+print(data["Survived"].value_counts(normalize=True) * 100)
+
+print("\nGender Count:")
+print(data["Sex"].value_counts())
+
+print("\nPassenger Class Count:")
+print(data["Pclass"].value_counts())
+
+# ==========================================
+# 4. NUMPY ANALYSIS
+# ==========================================
+
+print("\n========== NUMPY ANALYSIS ==========")
+
+age_array = data["Age"].to_numpy()
+fare_array = data["Fare"].to_numpy()
+survival_array = data["Survived"].to_numpy()
+
+print("\nAge Array:")
+print(age_array)
+
+print("\nFare Array:")
+print(fare_array)
+
+print("\nSurvival Array:")
+print(survival_array)
+
+print("\nAge Mean:", np.mean(age_array))
+print("Age Median:", np.median(age_array))
+print("Age Standard Deviation:", np.std(age_array))
+print("Minimum Age:", np.min(age_array))
+print("Maximum Age:", np.max(age_array))
+
+print("\nFare Mean:", np.mean(fare_array))
+print("Fare Median:", np.median(fare_array))
+print("Fare Standard Deviation:", np.std(fare_array))
+print("Minimum Fare:", np.min(fare_array))
+print("Maximum Fare:", np.max(fare_array))
+
+print("\nAge Percentiles:")
+print(np.percentile(age_array, [25, 50, 75]))
+
+print("\nFare Percentiles:")
+print(np.percentile(fare_array, [25, 50, 75]))
+
+print("\nTotal Survivors:", np.sum(survival_array))
+print("Total Non-Survivors:", len(survival_array) - np.sum(survival_array))
+
+print("\nAge Variance:", np.var(age_array))
+print("Fare Variance:", np.var(fare_array))
+
+# Find passengers whose age is above 18
+adult_passengers = np.where(data["Age"] >= 18)
+
+print("\nNumber of Adult Passengers:", len(adult_passengers[0]))
+
+# ==========================================
+# 5. SURVIVAL ANALYSIS
+# ==========================================
+
+print("\n========== SURVIVAL ANALYSIS ==========")
 
 print("\nSurvival by Gender:")
-print(data.groupby("Sex")["Survived"].agg(["count", "sum", "mean"]))
+print(data.groupby("Sex")["Survived"].mean() * 100)
 
 print("\nSurvival by Passenger Class:")
-print(data.groupby("Pclass")["Survived"].agg(["count", "sum", "mean"]))
+print(data.groupby("Pclass")["Survived"].mean() * 100)
 
-# Create Age Groups
+print("\nSurvival by Gender and Class:")
+print(data.groupby(["Sex", "Pclass"])["Survived"].mean() * 100)
+
+# ==========================================
+# 6. AGE GROUP ANALYSIS
+# ==========================================
+
+print("\n========== AGE GROUP ANALYSIS ==========")
+
 data["AgeGroup"] = pd.cut(
     data["Age"],
     bins=[0, 12, 18, 35, 60, 100],
-    labels=["Child", "Teenager", "Adult", "Middle Age", "Senior"]
+    labels=["Child", "Teenager", "Young Adult", "Adult", "Senior"]
 )
+
+print("\nPassenger Count by Age Group:")
+print(data["AgeGroup"].value_counts())
 
 print("\nSurvival by Age Group:")
 print(data.groupby("AgeGroup", observed=False)["Survived"].mean() * 100)
 
-# Additional NumPy Analysis
-print("\n========== ADDITIONAL NUMPY STATISTICS ==========")
+# ==========================================
+# 7. VISUALIZATION
+# ==========================================
 
-print("Variance of Age:", np.var(ages))
-print("Average Survival Value:", np.mean(survival))
-print("Total Fare:", np.sum(fares))
+print("\n========== DATA VISUALIZATION ==========")
 
-# Visualizations
-sns.set_theme(style="whitegrid")
+sns.set_style("whitegrid")
 
-# 1. Survival Count
+# Plot 1: Survival Count
 plt.figure(figsize=(7, 5))
-sns.countplot(data=data, x="Survived")
-plt.title("Titanic Passenger Survival Count")
+sns.countplot(x="Survived", data=data)
+plt.title("Titanic Survival Count")
 plt.xlabel("Survived (0 = No, 1 = Yes)")
 plt.ylabel("Number of Passengers")
-plt.tight_layout()
-plt.savefig("1_survival_count.png")
+plt.savefig("survival_count.png")
 plt.show()
 
-# 2. Survival by Gender
+# Plot 2: Survival by Gender
 plt.figure(figsize=(7, 5))
-sns.countplot(data=data, x="Sex", hue="Survived")
-plt.title("Survival Count by Gender")
+sns.countplot(x="Sex", hue="Survived", data=data)
+plt.title("Survival by Gender")
 plt.xlabel("Gender")
 plt.ylabel("Number of Passengers")
-plt.tight_layout()
-plt.savefig("2_survival_by_gender.png")
+plt.savefig("survival_by_gender.png")
 plt.show()
 
-# 3. Survival by Passenger Class
+# Plot 3: Survival by Passenger Class
 plt.figure(figsize=(7, 5))
-sns.countplot(data=data, x="Pclass", hue="Survived")
-plt.title("Survival Count by Passenger Class")
+sns.countplot(x="Pclass", hue="Survived", data=data)
+plt.title("Survival by Passenger Class")
 plt.xlabel("Passenger Class")
 plt.ylabel("Number of Passengers")
-plt.tight_layout()
-plt.savefig("3_survival_by_class.png")
+plt.savefig("survival_by_class.png")
 plt.show()
 
-# 4. Age Distribution
-plt.figure(figsize=(8, 5))
-sns.histplot(data=data, x="Age", bins=25, kde=True)
+# Plot 4: Age Distribution
+plt.figure(figsize=(7, 5))
+sns.histplot(data["Age"], bins=20, kde=True)
 plt.title("Age Distribution of Passengers")
 plt.xlabel("Age")
 plt.ylabel("Number of Passengers")
-plt.tight_layout()
-plt.savefig("4_age_distribution.png")
+plt.savefig("age_distribution.png")
 plt.show()
 
-# 5. Survival by Age Group
+# Plot 5: Survival by Age Group
 plt.figure(figsize=(8, 5))
-sns.barplot(data=data, x="AgeGroup", y="Survived", errorbar=None)
-plt.title("Survival Rate by Age Group")
+sns.countplot(x="AgeGroup", hue="Survived", data=data)
+plt.title("Survival by Age Group")
 plt.xlabel("Age Group")
-plt.ylabel("Survival Rate")
-plt.tight_layout()
-plt.savefig("5_survival_by_age_group.png")
+plt.ylabel("Number of Passengers")
+plt.xticks(rotation=15)
+plt.savefig("survival_by_age_group.png")
 plt.show()
 
-# 6. Fare and Passenger Class
-plt.figure(figsize=(8, 5))
-sns.boxplot(data=data, x="Pclass", y="Fare", hue="Pclass", legend=False)
-plt.title("Ticket Fare by Passenger Class")
+# Plot 6: Fare by Passenger Class
+plt.figure(figsize=(7, 5))
+sns.boxplot(x="Pclass", y="Fare", data=data)
+plt.title("Fare Distribution by Passenger Class")
 plt.xlabel("Passenger Class")
 plt.ylabel("Fare")
-plt.tight_layout()
-plt.savefig("6_fare_by_class.png")
+plt.savefig("fare_by_class.png")
 plt.show()
 
-print("\nAll Charts Have Been Saved in the Project Folder.")
-print("Project Completed Successfully!")
+print("\nAll Graphs Generated Successfully!")
+
+# ==========================================
+# 8. FINAL CONCLUSION
+# ==========================================
+
+print("\n========== PROJECT CONCLUSION ==========")
+
+print("1. Female passengers had a higher survival rate than male passengers.")
+print("2. First-class passengers had better survival chances.")
+print("3. Passenger age also affected survival.")
+print("4. Passenger class and gender were important factors in survival.")
+
+print("\nTitanic Survival Analysis Completed Successfully!")
+
